@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Wiki Offline Reader</title>
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+
+    <link rel="icon" type="image/x-icon" href="./assets/icon/favicon.ico" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="./css/style.css" />
+    <meta name="theme-color" content="#0f172a" />
+  </head>
+  <body>
+    <div class="app-container">
+      
+      <!-- Top Header & Tabs -->
+      <header class="app-header">
+        <div class="brand-section">
+          <h1>Wiki Reader</h1>
+          <div id="connection-status" class="status-badge">
+            <span class="status-dot online"></span> Checking...
+          </div>
+        </div>
+        
+        <nav class="nav-tabs">
+          <button id="tab-search" class="tab-btn active">
+            <i>🔍</i> Search
+          </button>
+          <button id="tab-saved" class="tab-btn">
+            <i>📂</i> Saved Offline
+          </button>
+        </nav>
+      </header>
+
+      <!-- Main View Content -->
+      <main class="app-content">
+        
+        <!-- Search Panel View -->
+        <section id="view-search" class="view-panel active">
+          <div class="search-box">
+            <form id="search-form">
+              <input 
+                type="search" 
+                id="search-input" 
+                class="search-input" 
+                placeholder="Search Wikipedia..." 
+                autocomplete="off"
+              />
+              <button type="submit" class="search-btn">Go</button>
+            </form>
+          </div>
+          
+          <div id="history-container" class="recent-searches"></div>
+          
+          <div id="results-list" class="cards-container">
+            <div class="empty-state">
+              <div class="empty-icon">🔍</div>
+              <h3>Start searching</h3>
+              <p class="sub-p">Search for Wikipedia articles and save them for reading offline later.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Saved Panel View -->
+        <section id="view-saved" class="view-panel">
+          <div id="saved-list" class="cards-container">
+            <!-- Dynamically rendered -->
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Article Reading Modal Sheet -->
+      <div id="article-modal" class="modal-overlay">
+        <div class="modal-sheet">
+          <header class="modal-header">
+            <button id="modal-close" class="modal-close-btn">✕</button>
+            <div class="modal-header-actions">
+              <button id="modal-save-btn" class="modal-save-btn">💾 Save Offline</button>
+            </div>
+          </header>
+          
+          <div class="modal-body">
+            <div id="modal-cover" class="modal-cover-image" style="display: none;">
+              <button id="modal-change-cover" class="change-cover-overlay">📷 Add Cover</button>
+            </div>
+            <div class="modal-title-container">
+              <h2 id="modal-title">Article Title</h2>
+            </div>
+            <div id="modal-content" class="modal-text-content">
+              <!-- Article body text -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main JavaScript Logic -->
+    <script src="./js/app.js" type="module"></script>
+  </body>
+</html>
