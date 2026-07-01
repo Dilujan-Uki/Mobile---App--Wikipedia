@@ -1,13 +1,15 @@
 {
-  "name": "App",
-  "short_name": "App",
+  "name": "Wiki Reader",
+  "short_name": "Wiki",
+  "description": "Read Wikipedia articles offline on your mobile device.",
   "start_url": "index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "icons": [{
     "src": "assets/imgs/logo.png",
     "sizes": "512x512",
     "type": "image/png"
   }],
-  "background_color": "#31d53d",
-  "theme_color": "#31d53d"
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
 }

@@ -2,98 +2,135 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <title>Wiki Offline Reader</title>
+    <title>Wiki Reader — Offline Wikipedia</title>
     <meta
       name="viewport"
       content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
+    <meta name="description" content="Read Wikipedia articles offline on your mobile device." />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Wiki Reader" />
 
+    <link rel="icon" type="image/svg+xml" href="./assets/icon/Logo.svg" />
     <link rel="icon" type="image/x-icon" href="./assets/icon/favicon.ico" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="stylesheet" href="./css/style.css" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#ffffff" />
   </head>
   <body>
     <div class="app-container">
-      
-      <!-- Top Header & Tabs -->
+
+      <!-- ── Header ── -->
       <header class="app-header">
-        <div class="brand-section">
-          <h1>Wiki Reader</h1>
-          <div id="connection-status" class="status-badge">
-            <span class="status-dot online"></span> Checking...
+        <div class="header-top">
+
+          <!-- Logo + Brand Name -->
+          <div class="brand-logo-wrap">
+            <img
+              src="./assets/icon/Logo.svg"
+              alt="Wiki Reader Logo"
+              class="brand-logo-img"
+              id="app-logo"
+            />
+            <div class="brand-name">
+              <span class="brand-title">Wiki Reader</span>
+              <span class="brand-sub">Offline Wikipedia</span>
+            </div>
+          </div>
+
+          <!-- Connection Status -->
+          <div id="connection-status" class="status-badge" role="status" aria-live="polite">
+            <span class="status-dot online"></span>
+            <span>Checking...</span>
           </div>
         </div>
-        
-        <nav class="nav-tabs">
-          <button id="tab-search" class="tab-btn active">
-            <i>🔍</i> Search
+
+        <!-- Tab Navigation -->
+        <nav class="nav-tabs" role="tablist" aria-label="Main navigation">
+          <button id="tab-search" class="tab-btn active" role="tab" aria-selected="true" aria-controls="view-search">
+            <span class="tab-icon">🔍</span> Search
           </button>
-          <button id="tab-saved" class="tab-btn">
-            <i>📂</i> Saved Offline
+          <button id="tab-saved" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-saved">
+            <span class="tab-icon">📂</span> Saved Offline
           </button>
         </nav>
       </header>
 
-      <!-- Main View Content -->
-      <main class="app-content">
-        
-        <!-- Search Panel View -->
-        <section id="view-search" class="view-panel active">
+      <!-- ── Main Content ── -->
+      <main class="app-content" id="main-content">
+
+        <!-- Search Panel -->
+        <section id="view-search" class="view-panel active" role="tabpanel" aria-labelledby="tab-search">
+
+          <!-- Search Bar -->
           <div class="search-box">
-            <form id="search-form">
-              <input 
-                type="search" 
-                id="search-input" 
-                class="search-input" 
-                placeholder="Search Wikipedia..." 
+            <form id="search-form" autocomplete="off" aria-label="Search Wikipedia">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input
+                type="search"
+                id="search-input"
+                class="search-input"
+                placeholder="Search Wikipedia..."
                 autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                aria-label="Search Wikipedia"
               />
-              <button type="submit" class="search-btn">Go</button>
+              <button type="submit" class="search-btn" aria-label="Go">Go</button>
             </form>
           </div>
-          
-          <div id="history-container" class="recent-searches"></div>
-          
-          <div id="results-list" class="cards-container">
+
+          <!-- Recent Searches -->
+          <div id="history-container" class="recent-searches" aria-label="Recent searches"></div>
+
+          <!-- Results -->
+          <div id="results-list" class="cards-container" aria-live="polite" aria-label="Search results">
             <div class="empty-state">
-              <div class="empty-icon">🔍</div>
+              <div class="empty-icon" aria-hidden="true">🌐</div>
               <h3>Start searching</h3>
-              <p class="sub-p">Search for Wikipedia articles and save them for reading offline later.</p>
+              <p class="sub-p">Search for Wikipedia articles and save them for offline reading.</p>
             </div>
           </div>
         </section>
 
-        <!-- Saved Panel View -->
-        <section id="view-saved" class="view-panel">
-          <div id="saved-list" class="cards-container">
-            <!-- Dynamically rendered -->
-          </div>
+        <!-- Saved Panel -->
+        <section id="view-saved" class="view-panel" role="tabpanel" aria-labelledby="tab-saved">
+          <div id="saved-list" class="cards-container" aria-live="polite" aria-label="Saved articles"></div>
         </section>
 
       </main>
 
-      <!-- Article Reading Modal Sheet -->
-      <div id="article-modal" class="modal-overlay">
+      <!-- ── Article Modal Sheet ── -->
+      <div id="article-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-sheet">
           <header class="modal-header">
-            <button id="modal-close" class="modal-close-btn">✕</button>
+            <button id="modal-close" class="modal-close-btn" aria-label="Close article">✕</button>
             <div class="modal-header-actions">
-              <button id="modal-save-btn" class="modal-save-btn">💾 Save Offline</button>
+              <button id="modal-save-btn" class="modal-save-btn" aria-label="Save article offline">
+                💾 Save Offline
+              </button>
             </div>
           </header>
-          
+
           <div class="modal-body">
-            <div id="modal-cover" class="modal-cover-image" style="display: none;">
-              <button id="modal-change-cover" class="change-cover-overlay">📷 Add Cover</button>
+            <!-- Cover Image (hidden by default) -->
+            <div id="modal-cover" class="modal-cover-image" style="display:none;" role="img" aria-label="Article cover image">
+              <button id="modal-change-cover" class="change-cover-overlay" aria-label="Change cover photo">📷 Add Cover</button>
             </div>
+
+            <!-- Article Title -->
             <div class="modal-title-container">
               <h2 id="modal-title">Article Title</h2>
             </div>
-            <div id="modal-content" class="modal-text-content">
-              <!-- Article body text -->
+
+            <!-- Article Body -->
+            <div id="modal-content" class="modal-text-content" aria-label="Article content">
+              <!-- Dynamically rendered -->
             </div>
           </div>
         </div>
@@ -101,7 +138,7 @@
 
     </div>
 
-    <!-- Main JavaScript Logic -->
+    <!-- Main App Logic -->
     <script src="./js/app.js" type="module"></script>
   </body>
 </html>

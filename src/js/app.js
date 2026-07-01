@@ -109,13 +109,13 @@ function switchTab(tabName) {
 function updateOnlineStatus() {
   state.isOnline = navigator.onLine;
   if (state.isOnline) {
-    els.connectionStatus.innerHTML = '<span class="status-dot online"></span> Online';
+    els.connectionStatus.innerHTML = '<span class="status-dot online"></span><span>Online</span>';
     els.searchInput.disabled = false;
     els.searchInput.placeholder = "Search Wikipedia...";
   } else {
-    els.connectionStatus.innerHTML = '<span class="status-dot offline"></span> Offline Mode';
+    els.connectionStatus.innerHTML = '<span class="status-dot offline"></span><span>Offline</span>';
     els.searchInput.disabled = true;
-    els.searchInput.placeholder = "Connect to internet to search...";
+    els.searchInput.placeholder = "No connection...";
   }
 }
 
@@ -126,7 +126,7 @@ async function performSearch(query) {
     return;
   }
 
-  showLoader(true);
+  showLoader(true, 'Searching Wikipedia...');
   addToHistory(query);
 
   try {
@@ -200,7 +200,7 @@ async function openArticle(title, pageid) {
       return;
     }
     
-    showLoader(true);
+    showLoader(true, 'Loading article...');
     try {
       // Fetch full content HTML from Wikipedia API Parse action
       const url = `https://en.wikipedia.org/w/api.php?action=parse&origin=*&format=json&page=${encodeURIComponent(title)}&prop=text&mobileformat=1&disableeditsection=1`;
@@ -422,14 +422,14 @@ function renderSearchHistory() {
 }
 
 // Utility UI Helpers
-function showLoader(show) {
+function showLoader(show, message = 'Loading...') {
   let loader = document.getElementById('loader');
   if (!loader && show) {
     loader = document.createElement('div');
     loader.id = 'loader';
     loader.className = 'loader-overlay';
-    loader.innerHTML = '<div class="spinner"></div>';
-    document.body.appendChild(loader);
+    loader.innerHTML = `<div class="spinner"></div><span class="loader-text">${message}</span>`;
+    document.querySelector('.app-container').appendChild(loader);
   } else if (loader && !show) {
     loader.remove();
   }
