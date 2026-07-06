@@ -55,7 +55,10 @@
             <span class="tab-icon">🔍</span> Search
           </button>
           <button id="tab-saved" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-saved">
-            <span class="tab-icon">📂</span> Saved Offline
+            <span class="tab-icon">📂</span> Saved
+          </button>
+          <button id="tab-files" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-files">
+            <span class="tab-icon">📎</span> My Files
           </button>
         </nav>
       </header>
@@ -103,6 +106,41 @@
           <div id="saved-list" class="cards-container" aria-live="polite" aria-label="Saved articles"></div>
         </section>
 
+        <!-- My Files Panel -->
+        <section id="view-files" class="view-panel" role="tabpanel" aria-labelledby="tab-files">
+
+          <!-- Upload Zone -->
+          <div id="upload-zone" class="upload-zone" role="button" tabindex="0" aria-label="Upload a file from your device">
+            <div class="upload-zone-inner">
+              <div class="upload-icon" aria-hidden="true">📎</div>
+              <p class="upload-zone-title">Upload a File</p>
+              <p class="upload-zone-sub">Supports TXT, PDF, DOCX, MD &amp; more</p>
+              <button id="upload-browse-btn" class="upload-browse-btn" type="button">Browse Files</button>
+            </div>
+            <input id="file-input" type="file" class="file-input-hidden" accept=".txt,.pdf,.docx,.doc,.md,.rtf,.csv,.json,.xml,.html" aria-hidden="true" tabindex="-1" />
+          </div>
+
+          <!-- Add File Form (hidden until file chosen) -->
+          <div id="file-form-container" class="file-form-container" style="display:none;">
+            <div class="file-form-preview">
+              <div class="file-form-icon" id="file-form-icon" aria-hidden="true">📄</div>
+              <div class="file-form-meta">
+                <span id="file-form-name" class="file-form-name">filename.txt</span>
+                <span id="file-form-size" class="file-form-size">0 KB</span>
+              </div>
+              <button id="file-form-cancel" class="file-form-cancel-btn" aria-label="Cancel">✕</button>
+            </div>
+            <div class="file-form-fields">
+              <label for="file-title-input" class="file-form-label">Custom Title</label>
+              <input id="file-title-input" type="text" class="file-title-input" placeholder="Give this file a title..." autocomplete="off" maxlength="80" />
+              <button id="file-add-btn" class="file-add-btn" type="button">Add to My Files</button>
+            </div>
+          </div>
+
+          <!-- Files List -->
+          <div id="files-list" class="cards-container" aria-live="polite" aria-label="Uploaded files"></div>
+        </section>
+
       </main>
 
       <!-- ── Article Modal Sheet ── -->
@@ -136,6 +174,26 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ── File Viewer Modal Sheet ── -->
+    <div id="file-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="file-modal-title">
+      <div class="modal-sheet">
+        <header class="modal-header">
+          <button id="file-modal-close" class="modal-close-btn" aria-label="Close file">✕</button>
+          <div class="modal-header-actions">
+            <div id="file-modal-badge" class="file-type-badge">TXT</div>
+            <button id="file-modal-delete" class="file-delete-btn" aria-label="Delete file">🗑 Delete</button>
+          </div>
+        </header>
+        <div class="modal-body">
+          <div class="modal-title-container">
+            <h2 id="file-modal-title">File Title</h2>
+            <span id="file-modal-meta" class="file-modal-meta"></span>
+          </div>
+          <div id="file-modal-content" class="modal-text-content file-content-area" aria-label="File content"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Main App Logic -->

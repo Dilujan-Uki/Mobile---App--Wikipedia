@@ -3,11 +3,14 @@ import { Camera, CameraResultType } from '@capacitor/camera';
 
 // State Management
 const state = {
-  currentTab: 'search', // 'search' or 'saved'
+  currentTab: 'search', // 'search', 'saved', or 'files'
   searchResults: [],
   savedArticles: JSON.parse(localStorage.getItem('saved_articles') || '{}'),
   searchHistory: JSON.parse(localStorage.getItem('search_history') || '[]'),
+  myFiles: JSON.parse(localStorage.getItem('my_files') || '{}'),
   currentArticle: null,
+  currentFile: null,
+  pendingFile: null, // The raw File object waiting to be named & added
   isOnline: navigator.onLine,
 };
 
@@ -15,12 +18,15 @@ const state = {
 const els = {
   tabSearch: document.getElementById('tab-search'),
   tabSaved: document.getElementById('tab-saved'),
+  tabFiles: document.getElementById('tab-files'),
   viewSearch: document.getElementById('view-search'),
   viewSaved: document.getElementById('view-saved'),
+  viewFiles: document.getElementById('view-files'),
   searchForm: document.getElementById('search-form'),
   searchInput: document.getElementById('search-input'),
   resultsList: document.getElementById('results-list'),
   savedList: document.getElementById('saved-list'),
+  filesList: document.getElementById('files-list'),
   historyContainer: document.getElementById('history-container'),
   connectionStatus: document.getElementById('connection-status'),
   articleModal: document.getElementById('article-modal'),
@@ -30,6 +36,25 @@ const els = {
   modalChangeCover: document.getElementById('modal-change-cover'),
   modalContent: document.getElementById('modal-content'),
   modalSaveBtn: document.getElementById('modal-save-btn'),
+  // File Upload UI
+  uploadZone: document.getElementById('upload-zone'),
+  fileInput: document.getElementById('file-input'),
+  uploadBrowseBtn: document.getElementById('upload-browse-btn'),
+  fileFormContainer: document.getElementById('file-form-container'),
+  fileFormIcon: document.getElementById('file-form-icon'),
+  fileFormName: document.getElementById('file-form-name'),
+  fileFormSize: document.getElementById('file-form-size'),
+  fileFormCancel: document.getElementById('file-form-cancel'),
+  fileTitleInput: document.getElementById('file-title-input'),
+  fileAddBtn: document.getElementById('file-add-btn'),
+  // File Viewer Modal
+  fileModal: document.getElementById('file-modal'),
+  fileModalClose: document.getElementById('file-modal-close'),
+  fileModalTitle: document.getElementById('file-modal-title'),
+  fileModalMeta: document.getElementById('file-modal-meta'),
+  fileModalContent: document.getElementById('file-modal-content'),
+  fileModalBadge: document.getElementById('file-modal-badge'),
+  fileModalDelete: document.getElementById('file-modal-delete'),
 };
 
 // Initialize Application
@@ -48,6 +73,7 @@ async function init() {
   updateOnlineStatus();
   renderSavedArticles();
   renderSearchHistory();
+  renderMyFiles();
 }
 
 // Bind event listeners
@@ -55,6 +81,7 @@ function bindEvents() {
   // Tab Switching
   els.tabSearch.addEventListener('click', () => switchTab('search'));
   els.tabSaved.addEventListener('click', () => switchTab('saved'));
+  els.tabFiles.addEventListener('click', () => switchTab('files'));
 
   // Search Action
   els.searchForm.addEventListener('submit', async (e) => {
@@ -86,22 +113,73 @@ function bindEvents() {
       closeModal();
     }
   });
+
+  // ── File Upload Events ──
+  // Click on zone (or the button inside it) triggers file input
+  els.uploadZone.addEventListener('click', (e) => {
+    els.fileInput.click();
+  });
+  els.uploadBrowseBtn.addEventListener('click', () => els.fileInput.click());
+
+  // Drag & Drop
+  els.uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    els.uploadZone.classList.add('drag-over');
+  });
+  els.uploadZone.addEventListener('dragleave', () => els.uploadZone.classList.remove('drag-over'));
+  els.uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    els.uploadZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelected(file);
+  });
+
+  // File input change
+  els.fileInput.addEventListener('change', () => {
+    const file = els.fileInput.files[0];
+    if (file) handleFileSelected(file);
+  });
+
+  // Cancel adding file
+  els.fileFormCancel.addEventListener('click', cancelFileForm);
+
+  // Add file to My Files
+  els.fileAddBtn.addEventListener('click', addFileToLibrary);
+  els.fileTitleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addFileToLibrary();
+  });
+
+  // File Viewer Modal
+  els.fileModalClose.addEventListener('click', closeFileModal);
+  els.fileModal.addEventListener('click', (e) => {
+    if (e.target === els.fileModal) closeFileModal();
+  });
+  els.fileModalDelete.addEventListener('click', deleteCurrentFile);
 }
 
-// Switch tabs between search and saved articles
+// Switch tabs between search, saved articles, and my files
 function switchTab(tabName) {
   state.currentTab = tabName;
+  [els.tabSearch, els.tabSaved, els.tabFiles].forEach(btn => {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-selected', 'false');
+  });
+  [els.viewSearch, els.viewSaved, els.viewFiles].forEach(v => v.classList.remove('active'));
+
   if (tabName === 'search') {
     els.tabSearch.classList.add('active');
-    els.tabSaved.classList.remove('active');
+    els.tabSearch.setAttribute('aria-selected', 'true');
     els.viewSearch.classList.add('active');
-    els.viewSaved.classList.remove('active');
-  } else {
-    els.tabSearch.classList.remove('active');
+  } else if (tabName === 'saved') {
     els.tabSaved.classList.add('active');
-    els.viewSearch.classList.remove('active');
+    els.tabSaved.setAttribute('aria-selected', 'true');
     els.viewSaved.classList.add('active');
     renderSavedArticles();
+  } else if (tabName === 'files') {
+    els.tabFiles.classList.add('active');
+    els.tabFiles.setAttribute('aria-selected', 'true');
+    els.viewFiles.classList.add('active');
+    renderMyFiles();
   }
 }
 
@@ -451,5 +529,280 @@ function showToast(message) {
   }, 3000);
 }
 
+// ═══════════════════════════════════════════
+//   MY FILES — File Upload & Reader Feature
+// ═══════════════════════════════════════════
+
+// Map file extensions to emoji icons and type labels
+const FILE_TYPE_MAP = {
+  txt:  { icon: '📄', label: 'TXT',  color: '#0c447c' },
+  md:   { icon: '📝', label: 'MD',   color: '#7c3a8c' },
+  pdf:  { icon: '📕', label: 'PDF',  color: '#c0392b' },
+  doc:  { icon: '📘', label: 'DOC',  color: '#1a5fa0' },
+  docx: { icon: '📘', label: 'DOCX', color: '#1a5fa0' },
+  csv:  { icon: '📊', label: 'CSV',  color: '#16a34a' },
+  json: { icon: '🔧', label: 'JSON', color: '#d97706' },
+  xml:  { icon: '🗂',  label: 'XML',  color: '#7c5c3a' },
+  html: { icon: '🌐', label: 'HTML', color: '#0c447c' },
+  rtf:  { icon: '📃', label: 'RTF',  color: '#555' },
+};
+
+function getFileExt(filename) {
+  return filename.split('.').pop().toLowerCase();
+}
+
+function getFileType(filename) {
+  const ext = getFileExt(filename);
+  return FILE_TYPE_MAP[ext] || { icon: '📎', label: ext.toUpperCase(), color: '#666' };
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Called when user picks a file from the input or drag & drops
+function handleFileSelected(file) {
+  state.pendingFile = file;
+  const type = getFileType(file.name);
+
+  // Show the form, hide the upload zone
+  els.uploadZone.style.display = 'none';
+  els.fileFormContainer.style.display = 'block';
+
+  // Fill in preview info
+  els.fileFormIcon.textContent = type.icon;
+  els.fileFormName.textContent = file.name;
+  els.fileFormSize.textContent = formatBytes(file.size);
+
+  // Pre-fill title with the filename (without extension)
+  const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  els.fileTitleInput.value = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+  els.fileTitleInput.select();
+  els.fileTitleInput.focus();
+}
+
+function cancelFileForm() {
+  state.pendingFile = null;
+  els.fileInput.value = '';
+  els.fileFormContainer.style.display = 'none';
+  els.uploadZone.style.display = '';
+  els.fileTitleInput.value = '';
+}
+
+// Read text content from supported file types
+function readFileContent(file) {
+  return new Promise((resolve) => {
+    const ext = getFileExt(file.name);
+    const textTypes = ['txt', 'md', 'csv', 'json', 'xml', 'html', 'rtf'];
+
+    if (textTypes.includes(ext)) {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve({ text: e.target.result, binary: false });
+      reader.onerror = () => resolve({ text: null, binary: false });
+      reader.readAsText(file);
+    } else {
+      // For PDF, DOCX, etc. — store a note; binary reading needs native plugin
+      resolve({ text: null, binary: true });
+    }
+  });
+}
+
+// Format text content for display
+function formatTextContent(text, ext) {
+  if (ext === 'json') {
+    try {
+      const parsed = JSON.parse(text);
+      return `<pre class="file-preformatted">${JSON.stringify(parsed, null, 2)}</pre>`;
+    } catch {
+      return `<pre class="file-preformatted">${escapeHtml(text)}</pre>`;
+    }
+  }
+  if (ext === 'html') {
+    // Sanitize a bit before render
+    const sanitized = text.replace(/<script[\s\S]*?<\/script>/gi, '')
+                          .replace(/on\w+="[^"]*"/gi, '');
+    return `<div class="file-html-content">${sanitized}</div>`;
+  }
+  if (ext === 'md') {
+    return renderMarkdown(text);
+  }
+  if (ext === 'csv') {
+    return renderCSVAsTable(text);
+  }
+  // Default: plain text
+  return `<pre class="file-preformatted">${escapeHtml(text)}</pre>`;
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Very lightweight Markdown → HTML (headings, bold, italic, code, links, bullets)
+function renderMarkdown(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>');
+  html = html.replace(/\n\n/g, '</p><p>');
+  return `<p>${html}</p>`;
+}
+
+// Render CSV as an HTML table
+function renderCSVAsTable(text) {
+  const lines = text.trim().split('\n').filter(Boolean);
+  if (lines.length === 0) return '<p>Empty CSV file.</p>';
+  const rows = lines.map(line => line.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+  const headers = rows[0];
+  const body = rows.slice(1);
+  const theadCells = headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+  const tbodyRows = body.map(r =>
+    `<tr>${r.map(c => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`
+  ).join('');
+  return `<div class="csv-table-wrapper"><table class="csv-table"><thead><tr>${theadCells}</tr></thead><tbody>${tbodyRows}</tbody></table></div>`;
+}
+
+// Add the pending file to MyFiles library
+async function addFileToLibrary() {
+  const file = state.pendingFile;
+  if (!file) return;
+
+  const title = els.fileTitleInput.value.trim();
+  if (!title) {
+    showToast('Please enter a title for the file.');
+    els.fileTitleInput.focus();
+    return;
+  }
+
+  els.fileAddBtn.disabled = true;
+  els.fileAddBtn.textContent = 'Reading...';
+
+  const { text, binary } = await readFileContent(file);
+  const ext = getFileExt(file.name);
+  const type = getFileType(file.name);
+  const id = `file_${Date.now()}`;
+
+  const fileEntry = {
+    id,
+    title,
+    originalName: file.name,
+    ext,
+    typeLabel: type.label,
+    typeIcon: type.icon,
+    typeColor: type.color,
+    size: file.size,
+    sizeLabel: formatBytes(file.size),
+    text: text || null,
+    binary,
+    addedAt: new Date().toISOString(),
+  };
+
+  state.myFiles[id] = fileEntry;
+  localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+
+  els.fileAddBtn.disabled = false;
+  els.fileAddBtn.textContent = 'Add to My Files';
+
+  cancelFileForm();
+  renderMyFiles();
+  showToast(`"${title}" added to My Files!`);
+}
+
+// Render the My Files list
+function renderMyFiles() {
+  const files = Object.values(state.myFiles).sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+
+  if (files.length === 0) {
+    els.filesList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📎</div>
+        <h3>No files yet</h3>
+        <p class="sub-p">Upload any file from your device. Give it a title and read its contents here — even offline.</p>
+      </div>`;
+    return;
+  }
+
+  els.filesList.innerHTML = files.map(f => `
+    <div class="saved-card file-card" data-file-id="${f.id}">
+      <div class="saved-img-placeholder" style="background:${f.typeColor}18; color:${f.typeColor}; font-size:1.8rem;">
+        ${f.typeIcon}
+      </div>
+      <div class="saved-info">
+        <h3>${f.title}</h3>
+        <p>${f.originalName} &nbsp;·&nbsp; ${f.sizeLabel}</p>
+        <span class="saved-date file-date">Added: ${new Date(f.addedAt).toLocaleDateString()}</span>
+      </div>
+      <div class="file-type-badge-card" style="background:${f.typeColor}18; color:${f.typeColor};">${f.typeLabel}</div>
+    </div>
+  `).join('');
+
+  els.filesList.querySelectorAll('.file-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const fileId = card.dataset.fileId;
+      openFileViewer(fileId);
+    });
+  });
+}
+
+// Open the file viewer modal
+function openFileViewer(fileId) {
+  const file = state.myFiles[fileId];
+  if (!file) return;
+  state.currentFile = file;
+
+  els.fileModalTitle.textContent = file.title;
+  els.fileModalBadge.textContent = file.typeLabel;
+  els.fileModalBadge.style.background = `${file.typeColor}18`;
+  els.fileModalBadge.style.color = file.typeColor;
+  els.fileModalMeta.textContent = `${file.originalName} · ${file.sizeLabel} · Added ${new Date(file.addedAt).toLocaleDateString()}`;
+
+  if (file.binary) {
+    els.fileModalContent.innerHTML = `
+      <div class="file-binary-notice">
+        <div class="file-binary-icon">${file.typeIcon}</div>
+        <h3>${file.typeLabel} File</h3>
+        <p>This is a binary file (<strong>${file.originalName}</strong>).</p>
+        <p>Full in-app rendering for <strong>${file.typeLabel}</strong> files requires a native plugin. The file is safely stored in your library.</p>
+        <p class="file-binary-tip">💡 Tip: For best results, convert PDF/DOCX files to <strong>.txt</strong> or <strong>.md</strong> before uploading to read their full content here.</p>
+      </div>`;
+  } else if (file.text !== null) {
+    els.fileModalContent.innerHTML = formatTextContent(file.text, file.ext);
+  } else {
+    els.fileModalContent.innerHTML = `<p class="file-read-error">⚠️ Could not read file content.</p>`;
+  }
+
+  els.fileModal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFileModal() {
+  els.fileModal.classList.remove('active');
+  document.body.style.overflow = '';
+  state.currentFile = null;
+}
+
+function deleteCurrentFile() {
+  if (!state.currentFile) return;
+  const { id, title } = state.currentFile;
+  if (!confirm(`Delete "${title}" from My Files?`)) return;
+  delete state.myFiles[id];
+  localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+  closeFileModal();
+  renderMyFiles();
+  showToast(`"${title}" deleted.`);
+}
+
 // Run App
 window.addEventListener('DOMContentLoaded', init);
+
