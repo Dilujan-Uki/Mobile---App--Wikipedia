@@ -3,77 +3,90 @@ import { Camera, CameraResultType } from '@capacitor/camera';
 
 // State Management
 const state = {
-  currentTab: 'search', // 'search', 'saved', or 'files'
-  searchResults: [],
-  savedArticles: JSON.parse(localStorage.getItem('saved_articles') || '{}'),
-  searchHistory: JSON.parse(localStorage.getItem('search_history') || '[]'),
-  myFiles: JSON.parse(localStorage.getItem('my_files') || '{}'),
-  currentArticle: null,
-  currentFile: null,
-  pendingFile: null, // The raw File object waiting to be named & added
-  isOnline: navigator.onLine,
+   currentTab: 'search',
+   searchResults: [],
+   savedArticles: {},
+   searchHistory: [],
+   myFiles: {},
+   currentArticle: null,
+   currentFile: null,
+   pendingFile: null,
+   isOnline: navigator.onLine,
+   user: null,
+   token: localStorage.getItem('auth_token') || null,
 };
 
 // Elements
 const els = {
-  tabSearch: document.getElementById('tab-search'),
-  tabSaved: document.getElementById('tab-saved'),
-  tabFiles: document.getElementById('tab-files'),
-  viewSearch: document.getElementById('view-search'),
-  viewSaved: document.getElementById('view-saved'),
-  viewFiles: document.getElementById('view-files'),
-  searchForm: document.getElementById('search-form'),
-  searchInput: document.getElementById('search-input'),
-  resultsList: document.getElementById('results-list'),
-  savedList: document.getElementById('saved-list'),
-  filesList: document.getElementById('files-list'),
-  historyContainer: document.getElementById('history-container'),
-  connectionStatus: document.getElementById('connection-status'),
-  articleModal: document.getElementById('article-modal'),
-  modalClose: document.getElementById('modal-close'),
-  modalTitle: document.getElementById('modal-title'),
-  modalCover: document.getElementById('modal-cover'),
-  modalChangeCover: document.getElementById('modal-change-cover'),
-  modalContent: document.getElementById('modal-content'),
-  modalSaveBtn: document.getElementById('modal-save-btn'),
-  // File Upload UI
-  uploadZone: document.getElementById('upload-zone'),
-  fileInput: document.getElementById('file-input'),
-  uploadBrowseBtn: document.getElementById('upload-browse-btn'),
-  fileFormContainer: document.getElementById('file-form-container'),
-  fileFormIcon: document.getElementById('file-form-icon'),
-  fileFormName: document.getElementById('file-form-name'),
-  fileFormSize: document.getElementById('file-form-size'),
-  fileFormCancel: document.getElementById('file-form-cancel'),
-  fileTitleInput: document.getElementById('file-title-input'),
-  fileAddBtn: document.getElementById('file-add-btn'),
-  // File Viewer Modal
-  fileModal: document.getElementById('file-modal'),
-  fileModalClose: document.getElementById('file-modal-close'),
-  fileModalTitle: document.getElementById('file-modal-title'),
-  fileModalMeta: document.getElementById('file-modal-meta'),
-  fileModalContent: document.getElementById('file-modal-content'),
-  fileModalBadge: document.getElementById('file-modal-badge'),
-  fileModalDelete: document.getElementById('file-modal-delete'),
+   tabSearch: document.getElementById('tab-search'),
+   tabSaved: document.getElementById('tab-saved'),
+   tabFiles: document.getElementById('tab-files'),
+   viewSearch: document.getElementById('view-search'),
+   viewSaved: document.getElementById('view-saved'),
+   viewFiles: document.getElementById('view-files'),
+   searchForm: document.getElementById('search-form'),
+   searchInput: document.getElementById('search-input'),
+   resultsList: document.getElementById('results-list'),
+   savedList: document.getElementById('saved-list'),
+   filesList: document.getElementById('files-list'),
+   historyContainer: document.getElementById('history-container'),
+   connectionStatus: document.getElementById('connection-status'),
+   articleModal: document.getElementById('article-modal'),
+   modalClose: document.getElementById('modal-close'),
+   modalTitle: document.getElementById('modal-title'),
+   modalCover: document.getElementById('modal-cover'),
+   modalChangeCover: document.getElementById('modal-change-cover'),
+   modalSaveBtn: document.getElementById('modal-save-btn'),
+   uploadZone: document.getElementById('upload-zone'),
+   fileInput: document.getElementById('file-input'),
+   uploadBrowseBtn: document.getElementById('upload-browse-btn'),
+   fileFormContainer: document.getElementById('file-form-container'),
+   fileFormIcon: document.getElementById('file-form-icon'),
+   fileFormName: document.getElementById('file-form-name'),
+   fileFormSize: document.getElementById('file-form-size'),
+   fileFormCancel: document.getElementById('file-form-cancel'),
+   fileTitleInput: document.getElementById('file-title-input'),
+   fileAddBtn: document.getElementById('file-add-btn'),
+   fileModal: document.getElementById('file-modal'),
+   fileModalClose: document.getElementById('file-modal-close'),
+   fileModalTitle: document.getElementById('file-modal-title'),
+   fileModalMeta: document.getElementById('file-modal-meta'),
+   fileModalContent: document.getElementById('file-modal-content'),
+   fileModalBadge: document.getElementById('file-modal-badge'),
+   fileModalDelete: document.getElementById('file-modal-delete'),
+   authModal: document.getElementById('auth-modal'),
+   authForm: document.getElementById('auth-form'),
+   authName: document.getElementById('auth-name'),
+   authEmail: document.getElementById('auth-email'),
+   authPassword: document.getElementById('auth-password'),
+   authSubmit: document.getElementById('auth-submit'),
+   authError: document.getElementById('auth-error'),
+   authSwitchText: document.getElementById('auth-switch-text'),
+   authSwitchBtn: document.getElementById('auth-switch-btn'),
+   authClose: document.getElementById('auth-close'),
+   authBtn: document.getElementById('auth-btn'),
+   registerFields: document.getElementById('register-fields'),
+   authTitle: document.getElementById('auth-title'),
 };
 
 // Initialize Application
 async function init() {
-  // Hide native splash screen
-  try {
-    await SplashScreen.hide();
-  } catch (e) {
-    console.log('Splashscreen not available in browser');
-  }
+   try {
+     await SplashScreen.hide();
+   } catch (e) {
+     console.log('Splashscreen not available in browser');
+   }
 
-  // Bind Events
-  bindEvents();
-  
-  // Render Initial Views
-  updateOnlineStatus();
-  renderSavedArticles();
-  renderSearchHistory();
-  renderMyFiles();
+   bindEvents();
+   
+   if (state.token) {
+     await loadUserData();
+   }
+   
+   updateOnlineStatus();
+   renderSavedArticles();
+   renderSearchHistory();
+   renderMyFiles();
 }
 
 // Bind event listeners
@@ -154,8 +167,17 @@ function bindEvents() {
   els.fileModal.addEventListener('click', (e) => {
     if (e.target === els.fileModal) closeFileModal();
   });
-  els.fileModalDelete.addEventListener('click', deleteCurrentFile);
-}
+els.fileModalDelete.addEventListener('click', deleteCurrentFile);
+   
+   // Auth events
+   els.authBtn.addEventListener('click', openAuthModal);
+   els.authClose.addEventListener('click', closeAuthModal);
+   els.authForm.addEventListener('submit', handleAuthSubmit);
+   els.authSwitchBtn.addEventListener('click', toggleAuthMode);
+   els.authModal.addEventListener('click', (e) => {
+     if (e.target === els.authModal) closeAuthModal();
+   });
+ }
 
 // Switch tabs between search, saved articles, and my files
 function switchTab(tabName) {
@@ -370,27 +392,51 @@ function updateSaveButtonUI(isSaved) {
 }
 
 // Toggle local save state
-function toggleSaveCurrentArticle() {
-  if (!state.currentArticle) return;
-  
-  const title = state.currentArticle.title;
-  const isSaved = !!state.savedArticles[title];
-  
-  if (isSaved) {
-    delete state.savedArticles[title];
-    showToast(`Removed "${title}" from offline storage`);
-  } else {
-    state.savedArticles[title] = {
-      ...state.currentArticle,
-      savedAt: new Date().toISOString()
-    };
-    showToast(`Saved "${title}" offline!`);
-  }
-  
-  localStorage.setItem('saved_articles', JSON.stringify(state.savedArticles));
-  updateSaveButtonUI(!isSaved);
-  renderSavedArticles();
-}
+async function toggleSaveCurrentArticle() {
+   if (!state.currentArticle) return;
+   
+   const title = state.currentArticle.title;
+   const isSaved = !!state.savedArticles[title];
+   
+   if (isSaved) {
+     const articleToRemove = state.savedArticles[title];
+     delete state.savedArticles[title];
+     showToast(`Removed "${title}" from offline storage`);
+     if (state.token && articleToRemove._id) {
+       await fetch(`http://localhost:5000/api/auth/saved-articles/${articleToRemove._id}`, {
+         method: 'DELETE',
+         headers: { 'Authorization': `Bearer ${state.token}` }
+       });
+     }
+   } else {
+     const savedArticle = {
+       title: state.currentArticle.title,
+       pageid: state.currentArticle.pageid,
+       html: state.currentArticle.html,
+       summary: state.currentArticle.summary,
+       coverPhoto: state.currentArticle.coverPhoto,
+       savedAt: new Date().toISOString()
+     };
+     state.savedArticles[title] = savedArticle;
+     showToast(`Saved "${title}" offline!`);
+     if (state.token) {
+       const res = await fetch('http://localhost:5000/api/auth/saved-articles', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+         body: JSON.stringify(savedArticle)
+       });
+       const data = await res.json();
+       if (data.article) {
+         savedArticle._id = data.article._id;
+         state.savedArticles[title] = savedArticle;
+       }
+     }
+   }
+   
+   localStorage.setItem('saved_articles', JSON.stringify(state.savedArticles));
+   updateSaveButtonUI(!isSaved);
+   renderSavedArticles();
+ }
 
 // Use native camera plugin to change cover photo
 async function changeCurrentArticleCover() {
@@ -693,23 +739,37 @@ async function addFileToLibrary() {
   const type = getFileType(file.name);
   const id = `file_${Date.now()}`;
 
-  const fileEntry = {
-    id,
-    title,
-    originalName: file.name,
-    ext,
-    typeLabel: type.label,
-    typeIcon: type.icon,
-    typeColor: type.color,
-    size: file.size,
-    sizeLabel: formatBytes(file.size),
-    text: text || null,
-    binary,
-    addedAt: new Date().toISOString(),
-  };
+const fileEntry = {
+     id,
+     title,
+     originalName: file.name,
+     ext,
+     typeLabel: type.label,
+     typeIcon: type.icon,
+     typeColor: type.color,
+     size: file.size,
+     sizeLabel: formatBytes(file.size),
+     text: text || null,
+     binary,
+     addedAt: new Date().toISOString(),
+   };
 
-  state.myFiles[id] = fileEntry;
-  localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+   state.myFiles[id] = fileEntry;
+   localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+   
+   if (state.token) {
+     const res = await fetch('http://localhost:5000/api/auth/my-files', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
+       body: JSON.stringify(fileEntry)
+     });
+     const data = await res.json();
+     if (data.file) {
+       fileEntry._id = data.file._id;
+       state.myFiles[id] = fileEntry;
+       localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+     }
+   }
 
   els.fileAddBtn.disabled = false;
   els.fileAddBtn.textContent = 'Add to My Files';
@@ -793,14 +853,127 @@ function closeFileModal() {
 }
 
 function deleteCurrentFile() {
-  if (!state.currentFile) return;
-  const { id, title } = state.currentFile;
-  if (!confirm(`Delete "${title}" from My Files?`)) return;
-  delete state.myFiles[id];
-  localStorage.setItem('my_files', JSON.stringify(state.myFiles));
-  closeFileModal();
-  renderMyFiles();
-  showToast(`"${title}" deleted.`);
+   if (!state.currentFile) return;
+   const { _id, id, title } = state.currentFile;
+   if (!confirm(`Delete "${title}" from My Files?`)) return;
+   delete state.myFiles[id];
+   localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+   if (state.token && _id) {
+     fetch(`http://localhost:5000/api/auth/my-files/${_id}`, {
+       method: 'DELETE',
+       headers: { 'Authorization': `Bearer ${state.token}` }
+     });
+   }
+   closeFileModal();
+   renderMyFiles();
+   showToast(`"${title}" deleted.`);
+ }
+
+// Auth functions
+let isRegisterMode = false;
+
+function openAuthModal() {
+   if (state.user) {
+     // Show profile/logout
+     if (confirm(`Logged in as ${state.user.name}. Logout?`)) {
+       logout();
+     }
+     return;
+   }
+   isRegisterMode = false;
+   updateAuthUI();
+   els.authModal.classList.add('active');
+   document.body.style.overflow = 'hidden';
+}
+
+function closeAuthModal() {
+   els.authModal.classList.remove('active');
+   document.body.style.overflow = '';
+   els.authForm.reset();
+   els.authError.style.display = 'none';
+}
+
+function toggleAuthMode() {
+   isRegisterMode = !isRegisterMode;
+   updateAuthUI();
+}
+
+function updateAuthUI() {
+   els.authTitle.textContent = isRegisterMode ? 'Register' : 'Login';
+   els.authSubmit.textContent = isRegisterMode ? 'Register' : 'Login';
+   els.authSwitchText.textContent = isRegisterMode ? 'Already have an account?' : "Don't have an account?";
+   els.authSwitchBtn.textContent = isRegisterMode ? 'Login' : 'Register';
+   els.registerFields.style.display = isRegisterMode ? 'block' : 'none';
+}
+
+async function handleAuthSubmit(e) {
+   e.preventDefault();
+   const email = els.authEmail.value.trim();
+   const password = els.authPassword.value.trim();
+   
+   const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+   const body = isRegisterMode 
+     ? { name: els.authName.value.trim(), email, password }
+     : { email, password };
+   
+   try {
+     const res = await fetch(`http://localhost:5000${endpoint}`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify(body)
+     });
+     
+     const data = await res.json();
+     if (!res.ok) throw new Error(data.message);
+     
+     state.token = data.token;
+     state.user = data.user;
+     localStorage.setItem('auth_token', data.token);
+     closeAuthModal();
+     showToast(`Welcome${isRegisterMode ? '' : ' back'}, ${data.user.name}!`);
+     await loadUserData();
+   } catch (err) {
+     els.authError.textContent = err.message;
+     els.authError.style.display = 'block';
+   }
+}
+
+async function loadUserData() {
+   if (!state.token) return;
+   
+   const [articlesRes, filesRes] = await Promise.all([
+     fetch('http://localhost:5000/api/auth/saved-articles', {
+       headers: { 'Authorization': `Bearer ${state.token}` }
+     }),
+     fetch('http://localhost:5000/api/auth/my-files', {
+       headers: { 'Authorization': `Bearer ${state.token}` }
+     })
+   ]);
+   
+   const articlesData = await articlesRes.json();
+   const filesData = await filesRes.json();
+   
+   state.savedArticles = {};
+   articlesData.articles?.forEach(a => {
+     state.savedArticles[a.title] = { ...a, _id: a._id || a.id };
+   });
+   
+   state.myFiles = {};
+   filesData.files?.forEach(f => {
+     state.myFiles[f.id] = { ...f, _id: f._id || f.id };
+   });
+   
+   localStorage.setItem('saved_articles', JSON.stringify(state.savedArticles));
+   localStorage.setItem('my_files', JSON.stringify(state.myFiles));
+ }
+
+function logout() {
+   state.token = null;
+   state.user = null;
+   localStorage.removeItem('auth_token');
+   state.savedArticles = {};
+   state.myFiles = {};
+   showToast('Logged out');
 }
 
 // Run App
