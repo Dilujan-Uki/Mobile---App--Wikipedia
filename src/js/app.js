@@ -2,12 +2,9 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { Camera, CameraResultType } from '@capacitor/camera';
 
 // Backend API base URL.
-// For on-device testing over USB, use "localhost" together with:
-//   adb reverse tcp:5000 tcp:5000
-// which forwards the phone's localhost:5000 to this laptop's backend.
-// (If testing over Wi-Fi instead, set this to your laptop's LAN IP, e.g.
-//  http://192.168.1.17:5000, and ensure the phone can reach it.)
-const API_BASE = 'http://localhost:5000';
+// On a standalone (non-USB) phone, "localhost" means the phone itself, so the
+// API must be reached via the laptop's LAN IP. Update this if the IP changes.
+const API_BASE = 'http://192.168.1.17:5000';
 
 // State Management
 const state = {
