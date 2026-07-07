@@ -1,6 +1,14 @@
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Camera, CameraResultType } from '@capacitor/camera';
 
+// Backend API base URL.
+// For on-device testing over USB, use "localhost" together with:
+//   adb reverse tcp:5000 tcp:5000
+// which forwards the phone's localhost:5000 to this laptop's backend.
+// (If testing over Wi-Fi instead, set this to your laptop's LAN IP, e.g.
+//  http://192.168.1.17:5000, and ensure the phone can reach it.)
+const API_BASE = 'http://localhost:5000';
+
 // State Management
 const state = {
    currentTab: 'search',
@@ -403,7 +411,7 @@ async function toggleSaveCurrentArticle() {
      delete state.savedArticles[title];
      showToast(`Removed "${title}" from offline storage`);
      if (state.token && articleToRemove._id) {
-       await fetch(`http://localhost:5000/api/auth/saved-articles/${articleToRemove._id}`, {
+        await fetch(`${API_BASE}/api/auth/saved-articles/${articleToRemove._id}`, {
          method: 'DELETE',
          headers: { 'Authorization': `Bearer ${state.token}` }
        });
@@ -420,7 +428,7 @@ async function toggleSaveCurrentArticle() {
      state.savedArticles[title] = savedArticle;
      showToast(`Saved "${title}" offline!`);
      if (state.token) {
-       const res = await fetch('http://localhost:5000/api/auth/saved-articles', {
+        const res = await fetch(`${API_BASE}/api/auth/saved-articles`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
          body: JSON.stringify(savedArticle)
@@ -758,7 +766,7 @@ const fileEntry = {
    localStorage.setItem('my_files', JSON.stringify(state.myFiles));
    
    if (state.token) {
-     const res = await fetch('http://localhost:5000/api/auth/my-files', {
+      const res = await fetch(`${API_BASE}/api/auth/my-files`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.token}` },
        body: JSON.stringify(fileEntry)
@@ -859,7 +867,7 @@ function deleteCurrentFile() {
    delete state.myFiles[id];
    localStorage.setItem('my_files', JSON.stringify(state.myFiles));
    if (state.token && _id) {
-     fetch(`http://localhost:5000/api/auth/my-files/${_id}`, {
+      fetch(`${API_BASE}/api/auth/my-files/${_id}`, {
        method: 'DELETE',
        headers: { 'Authorization': `Bearer ${state.token}` }
      });
@@ -917,7 +925,7 @@ async function handleAuthSubmit(e) {
      : { email, password };
    
    try {
-     const res = await fetch(`http://localhost:5000${endpoint}`, {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
        method: 'POST',
        headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify(body)
@@ -942,10 +950,10 @@ async function loadUserData() {
    if (!state.token) return;
    
    const [articlesRes, filesRes] = await Promise.all([
-     fetch('http://localhost:5000/api/auth/saved-articles', {
-       headers: { 'Authorization': `Bearer ${state.token}` }
-     }),
-     fetch('http://localhost:5000/api/auth/my-files', {
+      fetch(`${API_BASE}/api/auth/saved-articles`, {
+        headers: { 'Authorization': `Bearer ${state.token}` }
+      }),
+      fetch(`${API_BASE}/api/auth/my-files`, {
        headers: { 'Authorization': `Bearer ${state.token}` }
      })
    ]);
