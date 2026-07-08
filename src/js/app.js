@@ -3,8 +3,10 @@ import { Camera, CameraResultType } from '@capacitor/camera';
 
 // Backend API base URL.
 // On a standalone (non-USB) phone, "localhost" means the phone itself, so the
-// API must be reached via the laptop's LAN IP. Update this if the IP changes.
-const API_BASE = 'http://192.168.1.17:5000';
+// API must be reached via the laptop's LAN IP or a tunnel (VITE_API_BASE_URL).
+// Falls back to the LAN IP when the env var is not set.
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.17:5000';
 
 // State Management
 const state = {

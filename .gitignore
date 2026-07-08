@@ -5,3 +5,8 @@ node_modules/
 .DS_Store
 .sourcemaps
 dist/
+
+# Local env files (session-specific tunnel URL, not for repo)
+.env.local
+.env.*.local
+
